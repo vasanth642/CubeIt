@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { executeMove } from './moves'
 
-export default function MoveInput({ cubeGroup, rotationGroup, rotate }) {
+export default function MoveInput({ cubeGroup, rotationGroup, rotate, resetCube }) {
   const [input, setInput] = useState('')
 
   function runMovesSequentially(moves) {
@@ -10,11 +10,17 @@ export default function MoveInput({ cubeGroup, rotationGroup, rotate }) {
     function nextMove() {
       if (index >= moves.length) return
 
+      // Safety check
+      if (!cubeGroup?.current || !rotationGroup?.current) {
+        console.error("Cube groups not ready")
+        return
+      }
+
       executeMove(moves[index], cubeGroup, rotationGroup, rotate)
 
       index++
 
-      // wait slightly longer than animation duration (250ms)
+      // Wait slightly longer than animation duration
       setTimeout(nextMove, 500)
     }
 
@@ -26,9 +32,17 @@ export default function MoveInput({ cubeGroup, rotationGroup, rotate }) {
 
     const moves = input.trim().split(/[ ,]+/).filter(Boolean)
 
+    if (moves.length === 0) return
+
     runMovesSequentially(moves)
 
     setInput('')
+  }
+
+  const handleReset = () => {
+    if (resetCube) {
+      resetCube()
+    }
   }
 
   return (
@@ -39,10 +53,21 @@ export default function MoveInput({ cubeGroup, rotationGroup, rotate }) {
         top: 20,
         left: 20,
         zIndex: 10
-      }}>
-      <input type="text" placeholder="" value={input} onChange={(e) => setInput(e.target.value)} />
+      }}
+    >
+      <input
+        type="text"
+        placeholder="Enter moves (ex: R U R')"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      />
 
       <button type="submit">Run</button>
+
+      {/* VERY IMPORTANT */}
+      <button type="button" onClick={handleReset}>
+        Reset Cube
+      </button>
     </form>
   )
 }

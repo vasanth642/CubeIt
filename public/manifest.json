@@ -1,0 +1,21 @@
+{
+  "short_name": "CubeIt",
+  "name": "CubeIt — Speedcubing Timer",
+  "icons": [
+    {
+      "src": "cube-icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "cube-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#060210",
+  "background_color": "#060210",
+  "orientation": "portrait"
+}
