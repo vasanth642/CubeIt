@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Environment } from '@react-three/drei'
+import { OrbitControls, Environment, ContactShadows } from '@react-three/drei'
 import { Suspense, useMemo, useRef, useState, useEffect, useCallback } from 'react'
 import TWEEN from '@tweenjs/tween.js'
 import * as THREE from 'three'
@@ -68,7 +68,7 @@ const rotateAction = (cubeGroup, rotationGroup, axis, limit, dir, setAnimating, 
   if (instant) {
     rotationGroup.rotation[axis] += (Math.PI / 2) * dir
     rotationGroup.updateMatrixWorld()
-    
+
     const finalPieces = [...rotationGroup.children]
     finalPieces.forEach(p => {
       cubeGroup.attach(p)
@@ -144,13 +144,37 @@ export default function App() {
   const rotationGroup = useRef()
   // eslint-disable-next-line no-unused-vars
   const [animating, setAnimating] = useState(false)
-  
-  const [appState, setAppState] = useState('IDLE') 
+
+  const [sidebarOpen, setSidebarOpen] = useState(false) // eslint-disable-line no-unused-vars
+
+  const [appState, setAppState] = useState('IDLE')
   const [timeMs, setTimeMs] = useState(0)
   const [scrambleText, setScrambleText] = useState([])
   const [cubeVisible, setCubeVisible] = useState(true)
 
   const [data, setData] = useState(loadData)
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false)
+  const [cubeSize, setCubeSize] = useState(400)
+
+  useEffect(() => {
+    const updateLayout = () => {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (mobile) {
+        // On mobile: cube should be comfortably centered in upper half
+        // Keep it smaller so timer text below never collides
+        const size = Math.min(window.innerWidth * 0.82, window.innerHeight * 0.42, 320)
+        setCubeSize(size)
+      } else {
+        setCubeSize(400)
+      }
+    }
+    updateLayout()
+    window.addEventListener('resize', updateLayout)
+    return () => window.removeEventListener('resize', updateLayout)
+  }, [])
 
   const appStateRef = useRef(appState)
   const startTimeRef = useRef(0)
@@ -158,16 +182,20 @@ export default function App() {
   const holdTimeoutRef = useRef(null)
   const scrambleRef = useRef(scrambleText)
 
+  const inspectionStartTimeRef = useRef(0)
+  const inspectionIntervalRef = useRef(null)
+  const [inspectionTimeMs, setInspectionTimeMs] = useState(15000)
+
   useEffect(() => { appStateRef.current = appState }, [appState])
   useEffect(() => { scrambleRef.current = scrambleText }, [scrambleText])
   useEffect(() => { saveData(data) }, [data])
 
   const applyScramble = useCallback((scramble) => {
     if (!cubeGroup.current || !rotationGroup.current) return
-    resetAction(cubeGroup.current, rotationGroup.current, () => {})
+    resetAction(cubeGroup.current, rotationGroup.current, () => { })
     scramble.forEach(move => {
-      executeMove(move, cubeGroup, rotationGroup, (cg, rg, ax, lim, dir) => 
-        rotateAction(cg, rg, ax, lim, dir, () => {}, true)
+      executeMove(move, cubeGroup, rotationGroup, (cg, rg, ax, lim, dir) =>
+        rotateAction(cg, rg, ax, lim, dir, () => { }, true)
       )
     })
   }, [])
@@ -175,7 +203,7 @@ export default function App() {
   useEffect(() => {
     const initScramble = generateScramble(20)
     setScrambleText(initScramble)
-    
+
     // Poll to ensure R3F children are fully mounted before applying rotation filters
     const checkAndScramble = () => {
       if (cubeGroup.current?.children.length === 27) {
@@ -193,6 +221,43 @@ export default function App() {
     timerIntervalRef.current = requestAnimationFrame(updateTimer)
   }, [])
 
+  const updateInspection = useCallback(() => {
+    const state = appStateRef.current;
+    if (state !== 'INSPECTING' && state !== 'READYING_RED' && state !== 'READYING_GREEN') return;
+
+    const elapsed = performance.now() - inspectionStartTimeRef.current;
+    const remaining = 15000 - elapsed;
+
+    if (remaining <= 0) {
+      setAppState('STOPPED');
+      setCubeVisible(true);
+      setTimeMs(0);
+
+      setData(prev => {
+        const activeSession = prev.sessions.find(s => s.id === prev.activeSessionId);
+        if (!activeSession) return prev;
+        const newSolves = [...activeSession.solves, {
+          id: Date.now().toString(),
+          timeMs: 0,
+          scramble: scrambleRef.current.join(' '),
+          penalty: -1, // DNF for exceeding 15s
+          date: Date.now()
+        }];
+        return {
+          ...prev,
+          sessions: prev.sessions.map(s => s.id === prev.activeSessionId ? { ...s, solves: newSolves } : s)
+        };
+      });
+      return;
+    }
+
+    if (state === 'INSPECTING') {
+      setInspectionTimeMs(remaining);
+    }
+    inspectionIntervalRef.current = requestAnimationFrame(updateInspection);
+  }, []);
+
+  // ── Keyboard controls (desktop) ──
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (document.activeElement.tagName === 'BUTTON' || document.activeElement.tagName === 'SELECT') return;
@@ -204,44 +269,47 @@ export default function App() {
       const state = appStateRef.current
 
       if (state === 'IDLE') {
+        setAppState('READYING_INSPECT')
+      } else if (state === 'INSPECTING') {
         setAppState('READYING_RED')
         setCubeVisible(false)
         setTimeMs(0)
-        
+
         holdTimeoutRef.current = setTimeout(() => {
-          setAppState('READYING_GREEN')
-        }, 300) 
+          if (appStateRef.current === 'READYING_RED') {
+            setAppState('READYING_GREEN')
+          }
+        }, 500)
       } else if (state === 'RUNNING') {
         cancelAnimationFrame(timerIntervalRef.current)
-        setAppState('STOPPED')
         setCubeVisible(true)
-        
+
         const finalTime = performance.now() - startTimeRef.current;
         setTimeMs(finalTime);
-        
+
+        const nextScramble = generateScramble(20)
+        setScrambleText(nextScramble)
+        applyScramble(nextScramble)
+
         setData(prev => {
-           const activeSession = prev.sessions.find(s => s.id === prev.activeSessionId);
-           if (!activeSession) return prev;
-           const newSolves = [...activeSession.solves, {
-             id: Date.now().toString(),
-             timeMs: finalTime,
-             scramble: scrambleRef.current.join(' '),
-             penalty: 0,
-             date: Date.now()
-           }];
-           return {
-             ...prev,
-             sessions: prev.sessions.map(s => s.id === prev.activeSessionId ? { ...s, solves: newSolves } : s)
-           };
+          const activeSession = prev.sessions.find(s => s.id === prev.activeSessionId);
+          if (!activeSession) return prev;
+          const newSolves = [...activeSession.solves, {
+            id: Date.now().toString(),
+            timeMs: finalTime,
+            scramble: scrambleRef.current.join(' '),
+            penalty: 0,
+            date: Date.now()
+          }];
+          return {
+            ...prev,
+            sessions: prev.sessions.map(s => s.id === prev.activeSessionId ? { ...s, solves: newSolves } : s)
+          };
         });
+        setAppState('STOPPED')
 
       } else if (state === 'STOPPED') {
-         setTimeMs(0)
-         setAppState('READYING_RED')
-         setCubeVisible(false)
-         holdTimeoutRef.current = setTimeout(() => {
-            setAppState('READYING_GREEN')
-         }, 300)
+        setAppState('READYING_INSPECT')
       }
     }
 
@@ -253,19 +321,20 @@ export default function App() {
 
       const state = appStateRef.current
 
-      if (state === 'READYING_RED') {
+      if (state === 'READYING_INSPECT') {
+        setAppState('INSPECTING')
+        setInspectionTimeMs(15000)
+        inspectionStartTimeRef.current = performance.now()
+        inspectionIntervalRef.current = requestAnimationFrame(updateInspection)
+      } else if (state === 'READYING_RED') {
         clearTimeout(holdTimeoutRef.current)
-        setAppState('IDLE')
-        setCubeVisible(true) 
+        setAppState('INSPECTING')
+        setCubeVisible(true)
       } else if (state === 'READYING_GREEN') {
+        cancelAnimationFrame(inspectionIntervalRef.current)
         setAppState('RUNNING')
         startTimeRef.current = performance.now()
         timerIntervalRef.current = requestAnimationFrame(updateTimer)
-      } else if (state === 'STOPPED') {
-        const newScramble = generateScramble(20)
-        setScrambleText(newScramble)
-        applyScramble(newScramble)
-        setAppState('IDLE')
       }
     }
 
@@ -277,9 +346,73 @@ export default function App() {
       window.removeEventListener('keyup', handleKeyUp)
       clearTimeout(holdTimeoutRef.current)
       cancelAnimationFrame(timerIntervalRef.current)
+      cancelAnimationFrame(inspectionIntervalRef.current)
+    }
+  }, [applyScramble, updateTimer, updateInspection])
+
+  // ── Touch controls (mobile) ──
+  const handleTouchStart = useCallback(() => {
+    const state = appStateRef.current
+    if (state === 'IDLE' || state === 'STOPPED') {
+      setAppState('READYING_INSPECT')
+    } else if (state === 'INSPECTING') {
+      setAppState('READYING_RED')
+      setCubeVisible(false)
+      setTimeMs(0)
+
+      holdTimeoutRef.current = setTimeout(() => {
+        if (appStateRef.current === 'READYING_RED') {
+          setAppState('READYING_GREEN')
+        }
+      }, 500)
+    } else if (state === 'RUNNING') {
+      cancelAnimationFrame(timerIntervalRef.current)
+      setCubeVisible(true)
+
+      const finalTime = performance.now() - startTimeRef.current
+      setTimeMs(finalTime)
+
+      const nextScramble = generateScramble(20)
+      setScrambleText(nextScramble)
+      applyScramble(nextScramble)
+
+      setData(prev => {
+        const activeSession = prev.sessions.find(s => s.id === prev.activeSessionId)
+        if (!activeSession) return prev
+        const newSolves = [...activeSession.solves, {
+          id: Date.now().toString(),
+          timeMs: finalTime,
+          scramble: scrambleRef.current.join(' '),
+          penalty: 0,
+          date: Date.now()
+        }]
+        return {
+          ...prev,
+          sessions: prev.sessions.map(s => s.id === prev.activeSessionId ? { ...s, solves: newSolves } : s)
+        }
+      })
+      setAppState('STOPPED')
     }
   }, [applyScramble, updateTimer])
 
+  const handleTouchEnd = useCallback(() => {
+    const state = appStateRef.current
+    if (state === 'READYING_INSPECT') {
+      setAppState('INSPECTING')
+      setInspectionTimeMs(15000)
+      inspectionStartTimeRef.current = performance.now()
+      inspectionIntervalRef.current = requestAnimationFrame(updateInspection)
+    } else if (state === 'READYING_RED') {
+      clearTimeout(holdTimeoutRef.current)
+      setAppState('INSPECTING')
+      setCubeVisible(true)
+    } else if (state === 'READYING_GREEN') {
+      cancelAnimationFrame(inspectionIntervalRef.current)
+      setAppState('RUNNING')
+      startTimeRef.current = performance.now()
+      timerIntervalRef.current = requestAnimationFrame(updateTimer)
+    }
+  }, [updateInspection, updateTimer])
 
   const handleSessionChange = (id) => setData(p => ({ ...p, activeSessionId: id }));
   const handleAddSession = () => {
@@ -325,15 +458,72 @@ export default function App() {
     }
   }, []);
 
+  const isFocusMode = appState === 'INSPECTING' || appState === 'READYING_RED' || appState === 'READYING_GREEN' || appState === 'RUNNING'
+
+  // Compute cube position: centered, but shifted up slightly on desktop
+  const cubeTop = isMobile
+    ? `calc(50% - ${cubeSize / 2}px - 30px)` // center-ish, above timer
+    : '50%'
+
   return (
-    <div style={{ 
-      width: '100vw', height: '100vh', 
-      background: 'radial-gradient(circle at 50% 20%, #4B1A8D 0%, #0B001A 100%)', 
+    <div style={{
+      width: '100vw', height: '100vh',
+      background: '#060210',
       position: 'relative', overflow: 'hidden',
-      fontFamily: '"Inter", sans-serif'
+      fontFamily: '"Inter", sans-serif',
+      touchAction: 'none',
     }}>
-      
-      <SidebarUI 
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap');
+
+        * { box-sizing: border-box; }
+
+        html, body {
+          margin: 0; padding: 0;
+          width: 100%; height: 100%;
+          overflow: hidden;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass-panel {
+          border: 0.5px solid rgba(255, 255, 255, 0.1);
+          box-shadow: none;
+          background: rgba(255, 255, 255, 0.02);
+          backdrop-filter: blur(30px);
+          -webkit-backdrop-filter: blur(30px);
+        }
+      `}</style>
+
+      {/* Deep Amethyst static base */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+        background: '#060210'
+      }} />
+
+      {/* Professional Mesh Grid — dynamically centered spotlight */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
+        backgroundImage: 'linear-gradient(rgba(140, 70, 255, 0.35) 1px, transparent 1px), linear-gradient(90deg, rgba(140, 70, 255, 0.35) 1px, transparent 1px)',
+        backgroundSize: '55px 55px',
+        maskImage: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,1) 5%, rgba(255,255,255,0.3) 30%, transparent 65%)',
+        WebkitMaskImage: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,1) 5%, rgba(255,255,255,0.3) 30%, transparent 65%)'
+      }} />
+
+      {/* Horizon glow strip */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        height: '40%', zIndex: 1, pointerEvents: 'none',
+        background: 'linear-gradient(to top, rgba(100, 30, 200, 0.12) 0%, transparent 100%)'
+      }} />
+
+      {/* 2% Noise Grain Overlay */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2,
+        backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E")',
+        opacity: 0.025
+      }} />
+
+      <SidebarUI
         data={data}
         appState={appState}
         onSessionChange={handleSessionChange}
@@ -342,22 +532,59 @@ export default function App() {
         onPenalty={handlePenalty}
         onDeleteSolve={handleDeleteSolve}
         onExport={exportData}
+        isFocusMode={isFocusMode}
       />
 
-      <TimerUI appState={appState} timeMs={timeMs} scrambleText={scrambleText} />
+      <TimerUI
+        appState={appState}
+        timeMs={timeMs}
+        scrambleText={scrambleText}
+        inspectionTimeMs={inspectionTimeMs}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        isMobile={isMobile}
+      />
 
-      <div style={{ position: 'absolute', top: '100px', bottom: '150px', left: 0, right: 0 }}>
+      {/* Soft amethyst ground glow under cube */}
+      <div style={{
+        position: 'absolute',
+        top: isMobile ? '50%' : '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: isMobile ? `${cubeSize * 1.4}px` : '500px',
+        height: isMobile ? `${cubeSize * 1.4}px` : '500px',
+        background: 'radial-gradient(ellipse at center, rgba(120, 40, 200, 0.15) 0%, transparent 70%)',
+        pointerEvents: 'none', zIndex: 4,
+        opacity: isFocusMode ? 0 : 1,
+        transition: 'opacity 0.6s ease-in-out'
+      }} />
+
+      {/* 3D Cube Canvas — responsive size, centered at 44% on mobile */}
+      <div style={{
+        position: 'absolute',
+        top: isMobile ? '50%' : '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: `${cubeSize}px`,
+        height: `${cubeSize}px`,
+        zIndex: 5,
+        opacity: isFocusMode ? 0 : 1,
+        transition: 'opacity 0.6s ease-in-out'
+      }}>
         <Canvas camera={{ position: [5, 5, 5], fov: 45 }}>
           <Suspense fallback={null}>
             <Environment preset="city" />
             <ambientLight intensity={0.5} />
-            
-            <Scene 
-              cubeGroup={cubeGroup} 
-              rotationGroup={rotationGroup} 
-              visible={cubeVisible}
-            />
-            
+
+            <group position={[0, 1.2, 0]} scale={[1.0, 1.0, 1.0]}>
+              <Scene
+                cubeGroup={cubeGroup}
+                rotationGroup={rotationGroup}
+                visible={cubeVisible}
+              />
+              <ContactShadows position={[0, -2.0, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
+            </group>
+
             <OrbitControls makeDefault enablePan={false} />
           </Suspense>
         </Canvas>
