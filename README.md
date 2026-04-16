@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>CubeIt</h1>
+  <h1>CUBEIT</h1>
   <p><strong>The Next-Generation, 3D Interactive Speedcubing Suite</strong></p>
   <p>A premium, blazing-fast Rubik's Cube timer with a built-in 3D visualizer, advanced statistics, and seamless offline capabilities.</p>
 </div>
@@ -91,3 +91,6 @@ Contributions are always welcome! Whether it is adding new themes, creating diff
 <div align="center">
   <i>Built for speedcubers, by a speedcuber. Happy solving! 🏁</i>
 </div>
+
+## 🙌 Credits
+The 3D Rubik’s Cube model used in this project is a modified version of the original work by **Sean Bradley**.
