@@ -4,9 +4,12 @@
   <p>A premium, blazing-fast Rubik's Cube timer with a built-in 3D visualizer, advanced statistics, and seamless offline capabilities.</p>
 </div>
 
----
+<p align="center"><img width="399" height="398" alt="Screenshot 2026-04-14 161242" src="https://github.com/user-attachments/assets/a5c22da1-53bf-4387-9ca7-5acb88cdfd0d" /></p>
+<img width="1918" height="942" alt="Screenshot 2026-04-16 192953" src="https://github.com/user-attachments/assets/134b6d24-b1f8-4895-bb0b-10e12a5ce847" />
+<img width="1919" height="942" alt="image" src="https://github.com/user-attachments/assets/abc4310f-bc32-4a37-a0e3-c5c494d726d4" />
 
-## Pitch: Why This Timer?
+
+## Why This Timer?
 
 Traditional cube timers are just static numbers on a screen. **CuboSapiens** reimagines the speedcubing experience with a highly polished, Apple-inspired "Amethyst & Slate" dark mode UI, powered by modern 3D graphics. 
 
