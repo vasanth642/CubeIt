@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>CuboSapiens (CubeIt / Vantage)</h1>
+  <h1>CubeIt</h1>
   <p><strong>The Next-Generation, 3D Interactive Speedcubing Suite</strong></p>
   <p>A premium, blazing-fast Rubik's Cube timer with a built-in 3D visualizer, advanced statistics, and seamless offline capabilities.</p>
 </div>
@@ -8,12 +8,18 @@
 <img width="1918" height="942" alt="Screenshot 2026-04-16 192953" src="https://github.com/user-attachments/assets/134b6d24-b1f8-4895-bb0b-10e12a5ce847" />
 <img width="1919" height="942" alt="image" src="https://github.com/user-attachments/assets/abc4310f-bc32-4a37-a0e3-c5c494d726d4" />
 
+<h1>Mobile version</h1>
+<p align="center">
+  <img  height="400" height="1600" alt="image" src="https://github.com/user-attachments/assets/09f40083-fe03-4fa8-9dfb-ca5b66db9434" />
+  <img  height="400" alt="image" src="https://github.com/user-attachments/assets/226d666c-1014-4ff4-811b-6ed5185e307c" />
+</p>
+
 
 ## Why This Timer?
 
-Traditional cube timers are just static numbers on a screen. **CuboSapiens** reimagines the speedcubing experience with a highly polished, Apple-inspired "Amethyst & Slate" dark mode UI, powered by modern 3D graphics. 
+Traditional cube timers are just static numbers on a screen. **CuboSapiens** reimagines the speedcubing experience with a highly polished, "Amethyst & Slate" dark mode UI, powered by modern 3D graphics. 
 
-Watch a 3D Rubik's Cube perfectly mirror your randomly generated scrambles in real-time. Whether you are practicing your CFOP algorithms or striving for a new Personal Best, CuboSapiens provides a completely distraction-free, professional environment.
+Watch a 3D Rubik's Cube perfectly mirror your randomly generated scrambles in real-time. Whether you are practicing your CFOP algorithms or striving for a new Personal Best, CubeIt provides a completely distraction-free, professional environment.
 
 ##  Key Features
 
@@ -26,7 +32,7 @@ Watch a 3D Rubik's Cube perfectly mirror your randomly generated scrambles in re
 
 ## Progressive Web App (PWA) - Install It Locally!
 
-CuboSapiens is built as a highly optimized **Progressive Web App (PWA)**. This means you do not have to keep it as an open browser tab—you can install it directly onto your device!
+CubeIt is built as a highly optimized **Progressive Web App (PWA)**. This means you do not have to keep it as an open browser tab—you can install it directly onto your device!
 
 **Features of the PWA:**
 - **100% Offline Capable:** Once loaded, you never need an internet connection to use the timer or view your history.
@@ -40,7 +46,7 @@ CuboSapiens is built as a highly optimized **Progressive Web App (PWA)**. This m
 
 ## Getting Started (Development)
 
-Want to run CuboSapiens on your local machine or contribute? It's easy!
+Want to run CubeIt on your local machine or contribute? It's easy!
 
 ### Prerequisites
 - Node.js (v16.x or newer)
@@ -49,8 +55,8 @@ Want to run CuboSapiens on your local machine or contribute? It's easy!
 ### Installation
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/CuboSapiens.git
-   cd CuboSapiens
+   git clone https://github.com/yourusername/CubeIt.git
+   cd CubeIt
    ```
 
 2. **Install dependencies:**
