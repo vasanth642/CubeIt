@@ -9,6 +9,7 @@ import SidebarUI from './SidebarUI'
 import { generateScramble } from './utils/scrambler'
 import { executeMove } from './moves'
 import { loadData, saveData, exportData } from './utils/storage'
+import AboutUsUI from './AboutUsUI'
 
 /* ---------------- COLORS ---------------- */
 const COLORS = {
@@ -151,6 +152,7 @@ export default function App() {
   const [timeMs, setTimeMs] = useState(0)
   const [scrambleText, setScrambleText] = useState([])
   const [cubeVisible, setCubeVisible] = useState(true)
+  const [activeView, setActiveView] = useState('home')
 
   const [data, setData] = useState(loadData)
 
@@ -536,17 +538,24 @@ export default function App() {
         onDeleteSolve={handleDeleteSolve}
         onExport={exportData}
         isFocusMode={isFocusMode}
+        activeView={activeView}
+        setActiveView={setActiveView}
       />
+      {activeView === 'home' &&
+        <TimerUI
+          appState={appState}
+          timeMs={timeMs}
+          scrambleText={scrambleText}
+          inspectionTimeMs={inspectionTimeMs}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          isMobile={isMobile}
+        />
+      }
 
-      <TimerUI
-        appState={appState}
-        timeMs={timeMs}
-        scrambleText={scrambleText}
-        inspectionTimeMs={inspectionTimeMs}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        isMobile={isMobile}
-      />
+      {activeView === 'about' &&
+        <AboutUsUI setActiveView={setActiveView} />
+      }
 
       {/* Soft amethyst ground glow under cube */}
       <div style={{
@@ -562,18 +571,21 @@ export default function App() {
         transition: 'opacity 0.6s ease-in-out'
       }} />
 
-      {/* 3D Cube Canvas — responsive size, centered at 44% on mobile */}
+      {/* 3D Cube Canvas — dynamic positioning for mobile & desktop */}
       <div style={{
         position: 'absolute',
-        top: isMobile ? '50%' : '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
+
+        top: activeView === 'home' ? '50%' : '15%',
+        left: activeView === 'home' ? '50%' : (isMobile ? '50%' : '85%'),
+        transform: activeView === 'home' ? 'translate(-50%, -50%) scale(1)' : 'translate(-50%, -50%) scale(0.8)',
         width: `${cubeSize}px`,
         height: `${cubeSize}px`,
         zIndex: 5,
-        opacity: isFocusMode ? 0 : 1,
-        transition: 'opacity 0.6s ease-in-out'
+        //if on mobile we hide the cube; if on desktop, we show the cube.
+        opacity: (isFocusMode || (isMobile && activeView !== 'home')) ? 0 : 1,
+        transition: 'all 0.6s cubic-bezier(0.25, 1, 0.5, 1)'
       }}>
+
         <Canvas camera={{ position: [5, 5, 5], fov: 45 }}>
           <Suspense fallback={null}>
             <Environment preset="city" />
