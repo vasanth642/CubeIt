@@ -62,13 +62,23 @@ const NAV_ITEMS = [
     label: 'Contribute', sub: 'Help build CubeIt', href: 'https://github.com', comingSoon: true
   },
   {
+  icon: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </svg>
+  ),
+  label: 'Keyboard Shortcuts',
+  sub: 'View available shortcuts'
+},
+  {
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
     label: 'Settings', sub: 'Customize your experience', comingSoon: true
   }
 ];
 
 // History panel content (shared between desktop sidebar and mobile drawer)
-function HistoryPanel({ data, onSessionChange, onAddSession, onClearSession, onPenalty, onDeleteSolve, solves, best }) {
+function HistoryPanel({ data, onSessionChange, onAddSession, onClearSession, onPenalty, onDeleteSolve, solves, best, setShowHelp }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Session selector */}
@@ -83,7 +93,20 @@ function HistoryPanel({ data, onSessionChange, onAddSession, onClearSession, onP
         <button
           onClick={(e) => { e.currentTarget.blur(); onAddSession(); }}
           style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '0.5px solid rgba(255,255,255,0.15)', padding: '9px 14px', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', transition: 'background 0.2s', whiteSpace: 'nowrap' }}
-        >+ New</button>
+        >+ New
+        <button
+            onClick={() => setShowHelp(true)}
+            style={{
+            background: 'rgba(255,255,255,0.08)',
+             color: 'white',
+            border: '0.5px solid rgba(255,255,255,0.15)',
+            borderRadius: '12px',
+           padding: '10px 14px',
+           cursor: 'pointer'
+       }}
+>
+  ⌨ Shortcuts
+</button></button>
       </div>
 
       {/* History header */}
@@ -128,6 +151,7 @@ export default function SidebarUI({
   const [menuOpen, setMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768);
@@ -143,6 +167,19 @@ export default function SidebarUI({
       setHistoryOpen(false);
     }
   }, [isFocusMode]);
+  useEffect(() => {
+  const handleEsc = (e) => {
+    if (e.key === 'Escape') {
+      setShowHelp(false);
+    }
+  };
+
+  window.addEventListener('keydown', handleEsc);
+
+  return () => {
+    window.removeEventListener('keydown', handleEsc);
+  };
+}, []);
 
   const activeSession = data.sessions.find(s => s.id === data.activeSessionId) || data.sessions[0];
   const solves = activeSession.solves;
@@ -404,6 +441,11 @@ export default function SidebarUI({
                 className={`nav-item ${isDisabled ? 'disabled' : ''}`} 
                 {...extra}
                 onClick={(e) => {
+                   if (item.label === 'Keyboard Shortcuts') {
+                     e.preventDefault();
+                     setShowHelp(true);
+                     return;
+                    }
                   if (isDisabled) e.preventDefault();
                 }}
                 title={item.comingSoon ? 'Coming Soon' : ''}
@@ -455,6 +497,7 @@ export default function SidebarUI({
             onDeleteSolve={onDeleteSolve}
             solves={solves}
             best={best}
+            setShowHelp={setShowHelp}
           />
         </div>
       </div>
@@ -479,6 +522,62 @@ export default function SidebarUI({
           ))}
         </div>
       </div>
+      {showHelp && (
+  <div
+    style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.7)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 9999
+    }}
+    onClick={() => setShowHelp(false)}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        background: '#111827',
+        color: 'white',
+        padding: '24px',
+        borderRadius: '12px',
+        width: '500px',
+        maxWidth: '90vw'
+      }}
+    >
+      <h2>⌨ Keyboard Shortcuts</h2>
+
+      <h3>Timer</h3>
+      <ul>
+        <li>Space → Start / Stop Timer</li>
+        <li>R → Reset Current Solve</li>
+      </ul>
+
+      <h3>Sessions</h3>
+      <ul>
+        <li>N → Create New Session</li>
+        <li>F2 → Rename Session</li>
+      </ul>
+
+      <h3>Navigation</h3>
+      <ul>
+        <li>Esc → Close Help Modal</li>
+      </ul>
+
+      <button
+        onClick={() => setShowHelp(false)}
+        style={{
+          marginTop: '12px',
+          padding: '8px 16px',
+          cursor: 'pointer'
+        }}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
     </>
   );
 }
